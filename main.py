@@ -12,13 +12,18 @@ app = Flask(__name__)
 
 @app.route('/',methods = ['POST', 'GET'])
 def index():
+   status = "on"
+   img="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
    if request.method == "POST":
          if "on" in request.form.get("status") :
             GPIO.output(LED, GPIO.HIGH) # turn on led code
+            status = "off"
+            img = "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.clker.com%2Fcliparts%2FI%2Fs%2FH%2Fl%2Ft%2F7%2Foff-lightbulb-hi.png&f=1&nofb=1&ipt=2579432248a8ede6b5b48699a8521b2c91e9e870a3d6b344da5a60705f4d1d11&ipo=images"
          else:   
             GPIO.output(LED, GPIO.LOW) # turn off led code
-       
-   return render_template('index.html')
+            status = "on"
+            img="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
+   return render_template('index.html', value=status, imgval=img)
 
 if __name__ == '__main__':
    app.run(debug = True)
