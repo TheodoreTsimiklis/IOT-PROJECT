@@ -3,6 +3,9 @@
 <head>
 	<meta charset="utf-8">
 	<title>IoT Dashboard</title>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="jquery-3.6.0.min.js"></script>
+<script src="gauge.js-gh-pages/dist/gauge.js"></script>
 <style>
 	img{
 		height: 50px;
@@ -11,14 +14,49 @@
 
 body{
 
-background-color: gray;
+	background: linear-gradient(-45deg, #f0430e, #f10761, #0eb6f3, #0af5be);
+	background-size: 400% 400%;
+	animation: gradient 15s ease infinite;
+	height: 100vh;
+}
+
+@keyframes gradient {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
 }
 
 button{
 	visibility:hidden;
-	
-
 }
+
+div{
+	text-align: center;
+	font-size: xx-large;
+	font-family: serif;
+	color: transparent;
+	text-align: center;
+	animation: effect 2s linear infinite;
+}
+@keyframes effect {
+        0% {
+            background: linear-gradient(#04fd42
+                , #ff2802);
+            -webkit-background-clip: text;
+        }
+ 
+        100% {
+            background: linear-gradient(
+                #9da713, #187c18ee);
+            -webkit-background-clip: text;
+        }
+    }
 
 img{
 	visibility:visible;
@@ -32,20 +70,124 @@ img:hover{
 	cursor:pointer;
 }
 
+.mask {
+  position: relative;
+  overflow: hidden;
+
+  display: block;
+  width: rem(200);
+  height: rem(100);
+  margin: rem(20);
+}
+
+
+.semi-circle {
+  position: relative;
+
+  display: block;
+  width: rem(200);
+  height: rem(100);
+
+  background: linear-gradient(to right, $red 0%, $yellow 50%, $green 100%);
+
+  border-radius: 50% 50% 50% 50% / 100% 100% 0% 0% ;
+
+  &::before {
+    content: "";
+
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    z-index: 2;
+
+    display: block;
+    width: rem(140);
+    height: rem(70);
+    margin-left: rem(-70);
+
+    background: #fff;
+
+    border-radius: 50% 50% 50% 50% / 100% 100% 0% 0% ;
+  }      
+}
+
+.semi-circle--mask {
+  position: absolute;
+  top: 0;
+  left: 0;
+
+  width: rem(200);
+  height: rem(200);
+
+  background: transparent;
+
+  transform: rotate(120deg) translate3d(0,0,0);
+  transform-origin: center center;
+  backface-visibility: hidden;
+  transition: all .3s ease-in-out;
+
+  &::before {
+    content: "";
+
+    position: absolute;
+    top: 0;
+    left: 0%;
+    z-index: 2;
+
+    display: block;
+    width: rem(202);
+    height: rem(102);
+    margin: -1px 0 0 -1px;
+
+    background: #f2f2f2;
+
+    border-radius: 50% 50% 50% 50% / 100% 100% 0% 0% ;
+  }      
+}
+
 </style>
 </head>
 <body>
 	<center>
 	<h1>This is the IoT Dashboard</h1>
+	</center>
 
-	<p>Temperature {{tempval}}</p>
-	<p>Humidity {{humidval}}</p>
-	
+<div>
+	<p>Temperature {{tempval}}        Humidity {{humidval}}</p>
 
+</div>
+
+<center>
 	<form id="form1" method="POST"></form>
 
 	<h2 id="LEDtxt">Turn LED ON</h2>
 	<button type="submit" form="form1" value={{value}} name="status" id="toggleLED"><img src={{imgval}}></button>
-	</center>
+</center>
+
+<script defer>
+
+if({{tempval}} > 20)
+if(confirm("do you want to turn on the fans")){
+
+   var fan = {
+    'fans': 'on'
+    }
+
+	$.ajax({
+url: Flask.url_for('index'),
+type: 'POST',
+data: JSON.stringify(fan),   // converts js value to JSON string
+})
+.done(function(result){     // on success get the return object from server
+    console.log(result)     // do whatever with it. In this case see it in console
+})
+
+}
+
+
+
+</script>
+
+
 </body>
 </html>
