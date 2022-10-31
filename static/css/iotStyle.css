@@ -1,0 +1,167 @@
+:root {
+  --gray: #bcbcbc;
+}
+
+
+html, body{
+			margin:0px;
+			padding: 0px;
+		}
+
+
+		#temp{
+			display: inline-flex;
+			flex-wrap: wrap;
+			margin-right: 50px;
+			margin-left: 25px;
+			border: 3px solid rgb(78, 78, 78);
+			height: 500px;
+			background-color: var(--gray);
+			border-radius: 20px;
+			width: 250px;
+			text-align: center;
+		}
+
+		#gauges{
+			width: 100%;
+			background-color:rgb(255, 255, 255);
+		}
+
+		#gauges>meter{
+			transform: rotate(-90deg);
+		}
+
+		#tempg{
+			margin-right: 40px;
+		}
+
+		#LED{
+			width: 100%;
+			background-color:rgb(255, 255, 255);
+		}
+
+
+		#light{
+			display: inline-flex;
+			border: 3px solid rgb(78, 78, 78);
+			border-radius: 20px;
+			flex-wrap: wrap;
+			background-color:var(--gray);
+		}
+
+		form > button{
+			width: 100%;
+			border-radius: 10px;
+			background-color: white;
+			border: none;
+		}
+
+		#text{
+			margin-left: auto;
+			margin-right: auto;
+			width: 10%;
+			visibility: hidden;
+		}
+
+		#fans{
+			width: 200px;
+		}
+		
+		#fanpic{
+			width: 100%;
+			/*animation: rotation 2s infinite linear;*/
+		}
+
+		@keyframes rotation {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(359deg);
+  }
+}
+
+		meter{
+			height: 40px;
+		}
+
+		#user{
+			background-color: var(--gray);
+			width: 200px;
+			float: left;
+			display:inline-flex;
+			height: 701px;
+			flex-wrap: wrap;
+			flex-direction: column
+		}
+
+		#userpfp{
+			border-radius: 50%;
+			height: 200px;
+			width: 200px;
+			margin-top: 10px; 
+		}
+
+		#userfavs{
+			width: 100%;
+      list-style-type: none;
+      padding-left: 10px;
+		}
+
+		#username, .favs{
+			height: 20px!important;
+		}
+
+		#username{
+			margin-top: 10px;
+			align-self: center;
+			font-size: larger;
+		}
+
+		.favs{
+			margin-left: 10px;
+			font-size: large;
+			font-weight: bold;
+		}
+
+		nav{
+			margin-bottom: 0px!important;
+		}
+
+		meter::-webkit-meter-optimum-value {
+      box-shadow: 0 5px 5px -5px #999 inset;
+      background-image: linear-gradient(
+        90deg, 
+        #0044ff 5%, 
+        #ff0000 100%
+      );
+      background-size: 100% 100%;
+    }
+
+#ledtoggle{
+	height: 100px;
+
+}    
+
+
+a{
+	user-select: none;
+}
+
+.params{
+	margin-left: auto;
+	margin-right: auto;
+	margin-top: 50px;
+	width: 500px;
+	background-color: var(--gray);
+}
+
+#settingsForm{
+	text-align-last: center;
+}
+
+.settingsTxt{
+	  font-size: x-large;
+    font-family: revert;
+}
+
