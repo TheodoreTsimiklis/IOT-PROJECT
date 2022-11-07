@@ -8,3 +8,4 @@
 - [ ] add mqtt subscriber on the python code
 - [ ] Test mqtt subscriber
 - [ ] test program
+- [ ] fix email sending
