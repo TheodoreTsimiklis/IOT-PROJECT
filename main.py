@@ -10,10 +10,11 @@ import RPi.GPIO as GPIO
 from gpiozero import LED
 import dht11
 import sqlite3
+from paho.mqtt import client as mqtt_client
 
 #for email
-email = ""
-password = ""
+email = "iotDummy2022@outlook.com"
+password = "IotProject"
 today = datetime.datetime.now()
 
 #for db
@@ -39,40 +40,9 @@ GPIO.setup(Motor1,GPIO.OUT)
 GPIO.setup(Motor2,GPIO.OUT)
 GPIO.setup(Motor3,GPIO.OUT)
 
-#flask
-app = Flask(__name__)
-
-@app.route('/',methods = ['POST', 'GET'])
-def index():
-
-   #default
-   status = "on"
-   img="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
-  
-  #turn LED on/off
-   if request.method == "POST":
-         if "on" in request.form.get("status") :
-            GPIO.output(LED, GPIO.HIGH)
-            status = "off"
-            img = f"https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.clker.com%2Fcliparts%2FI%2Fs%2FH%2Fl%2Ft%2F7%2Foff-lightbulb-hi.png&f=1&nofb=1&ipt=2579432248a8ede6b5b48699a8521b2c91e9e870a3d6b344da5a60705f4d1d11&ipo=images"
-         else:   
-            GPIO.output(LED, GPIO.LOW)
-            status = "on"
-            img=f"https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
-
-   #DHT11 code (temperature and humidity)
-   result = instance.read()     
-   
-   #makes sure temperature and humidity aren't both 0 (dht just decides not to record temperature)
-   while(result.humidity == 0 and result.temperature == 0):
-       result = instance.read()
-
-
-       #returns these values when the page reloads
-   return render_template('index.html', value=status, imgval=img, tempval=result.temperature, humidval=result.humidity)
-
-if __name__ == '__main__':
-   app.run(debug = True)
+global current_light_intensity
+currentLightIntensity = "NaN"
+global lightIntensity
 
 #sends email and turns on lights when the light level is under 400
 def lightsOn():
@@ -113,12 +83,71 @@ def fanOn():
 
 #method that's always running to read emails
 def readEmail():
-   #code to read emails
+   imap = imaplib.IMAP4_SSL(imap_server)
+# authenticate
+   imap.login(username, password)
+
+   status, messages = imap.select("INBOX")
+   # number of top emails to fetch
+   N = 1
+   # total number of emails
+   messages = int(messages[0])    
+
+   for i in range(messages, messages-N, -1):
+       # fetch the email message by ID
+       res, msg = imap.fetch(str(i), "(RFC822)")
+       for response in msg:
+           if isinstance(response, tuple):
+               # parse a bytes email into a message object
+               msg = email.message_from_bytes(response[1])
+               # decode the email subject
+               subject, encoding = decode_header(msg["Subject"])[0]
+               if isinstance(subject, bytes):
+                   # if it's a bytes, decode to str
+                   subject = subject.decode(encoding)
+               # decode email sender
+               From, encoding = decode_header(msg.get("From"))[0]
+               if isinstance(From, bytes):
+                   From = From.decode(encoding)
+               # if the email message is multipart
+               if msg.is_multipart():
+                   # iterate over email parts
+                   for part in msg.walk():
+                       # extract content type of email
+                       content_type = part.get_content_type()
+                       content_disposition = str(part.get("Content-Disposition"))
+                       try:
+                           # get the email body
+                           body = part.get_payload(decode=True).decode()
+                       except:
+                           pass
+                       if content_type == "text/plain" and "attachment" not in content_disposition:
+                           # print text/plain emails and skip attachments
+                           print(body)
+                           if("yes" in body):
+                               print("balls2")
+                               GPIO.output(Motor1,GPIO.HIGH)
+                               GPIO.output(Motor2,GPIO.HIGH)
+                               GPIO.output(Motor3,GPIO.LOW) 
+               else:
+                   # extract content type of email
+                   content_type = msg.get_content_type()
+                   # get the email body
+                   body = msg.get_payload(decode=True).decode()
+                   if content_type == "text/plain":
+                       # print only text email parts
+                       print(body)
+                       if("yes" in body):
+                           print("balls")
+                           GPIO.output(Motor1,GPIO.HIGH)
+                           GPIO.output(Motor2,GPIO.HIGH)
+                           GPIO.output(Motor3,GPIO.LOW) 
+   # close the connection and logout
+   imap.close()
+   imap.logout()
 
    #if "yes":
-   GPIO.output(Motor1,GPIO.HIGH)
-   GPIO.output(Motor2,GPIO.HIGH)
-   GPIO.output(Motor3,GPIO.LOW) 
+   
    pass
 
 #saves values to the db
@@ -145,3 +174,46 @@ def subscriber():
    lightsOn()
 
    pass   
+
+#flask
+app = Flask(__name__)
+
+@app.route('/',methods = ['POST', 'GET'])
+def index():
+
+   #default
+   status = "on"
+   img="https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
+  
+  #turn LED on/off
+   if request.method == "POST":
+         if "on" in request.form.get("status") :
+            GPIO.output(LED, GPIO.HIGH)
+            status = "off"
+            img = f"https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.clker.com%2Fcliparts%2FI%2Fs%2FH%2Fl%2Ft%2F7%2Foff-lightbulb-hi.png&f=1&nofb=1&ipt=2579432248a8ede6b5b48699a8521b2c91e9e870a3d6b344da5a60705f4d1d11&ipo=images"
+         else:   
+            GPIO.output(LED, GPIO.LOW)
+            status = "on"
+            img=f"https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
+
+   #DHT11 code (temperature and humidity)
+   result = instance.read()     
+   
+   #makes sure temperature and humidity aren't both 0 (dht just decides not to record temperature)
+   while(result.humidity == 0 and result.temperature == 0):
+       result = instance.read()
+
+   if(result.temperature > 20):
+       fanOn()
+
+
+
+       #returns these values when the page reloads
+   return render_template('index.html', value=status, imgval=img, tempval=result.temperature, humidval=result.humidity)
+
+if __name__ == '__main__':
+   app.run(debug = True)
+
+
+while True:
+   readEmail()
