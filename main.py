@@ -13,7 +13,7 @@ import sqlite3
 from paho.mqtt import client as mqtt_client
 
 #for email
-email = "iotDummy2022@outlook.com"
+username = "iotDummy2022@outlook.com"
 password = "IotProject"
 today = datetime.datetime.now()
 
@@ -40,6 +40,7 @@ GPIO.setup(Motor1,GPIO.OUT)
 GPIO.setup(Motor2,GPIO.OUT)
 GPIO.setup(Motor3,GPIO.OUT)
 
+
 global current_light_intensity
 currentLightIntensity = "NaN"
 global lightIntensity
@@ -51,16 +52,53 @@ def lightsOn():
       smtp.starttls()
       smtp.ehlo()
 
-      smtp.login(email, password)
+      smtp.login(username, password)
 
       subject = 'LEDs'
       body = f'The LED was turned on on {today.date()} at {today.time()}'
 
       msg = f'subject: {subject}\n\n{body}'
 
-      smtp.sendmail(email, email, msg)
+      smtp.sendmail(username, username, msg)
 
-   GPIO.output(LED, GPIO.HIGH) 
+#mqtt
+def connect_mqtt() -> mqtt_client:
+    def on_connect(client, userdata, flags, rc):
+        if rc == 0:
+            print("Connected to MQTT Broker!")
+        else:
+            print("Failed to connect, return code %d\n", rc)
+
+    client = mqtt_client.Client(client_id)
+    client.on_connect = on_connect
+    client.connect(broker, port)
+    return client
+
+def subscribe(client: mqtt_client):
+    def on_message(client, userdata, msg):
+        print(f"Received `{msg.payload.decode()}` from `{msg.topic}` topic")
+        lightmsg = ""
+        lightIntensity = 0
+        lightmsg = int(msg.payload.decode())
+        currentLightIntensity = lightmsg
+        if(int(msg.payload.decode()) <= 400):
+            lightsOn()
+            GPIO.output(ledPin, GPIO.HIGH)
+            
+        else:
+            GPIO.output(ledPin, GPIO.LOW)
+            
+            #emailSent = False
+            
+            
+        global current_light_intensity
+        current_light_intensity = msg.payload.decode()
+        
+            
+        
+    client.subscribe(topic)
+    client.on_message = on_message
+    return currentLightIntensity
 
 
 #sends an email when the temperature is over 20C/68F
@@ -70,14 +108,14 @@ def fanOn():
       smtp.starttls()
       smtp.ehlo()
 
-      smtp.login(email, password)
+      smtp.login(username, password)
 
       subject = 'Fans'
       body = 'the temperature is over 20C \ndo you want to turn the fans on?'
 
       msg = f'subject: {subject}\n\n{body}'
 
-      smtp.sendmail(email, email, msg)
+      smtp.sendmail(username, username, msg)
 
      
 
@@ -166,14 +204,13 @@ def database():
       theme = row[6]
 
    print("Operation done successfully")
-   conn.close()
+   conn.close() 
 
-#method that's always running to subscribe to the light topic
-def subscriber():
-   #if light < 400:
-   lightsOn()
+@app.callback(Output('light-intensity-value', 'value'),
+              Input('interval-component', 'n_intervals'))
+def update_light_intensity(n):
+    return 'The current light intensity is:' + str(current_light_intensity) 
 
-   pass   
 
 #flask
 app = Flask(__name__)
@@ -214,6 +251,10 @@ def index():
 if __name__ == '__main__':
    app.run(debug = True)
 
+def main():
+    client = connect_mqtt()
+    subscribe(client)
+    client.loop_start()
 
 while True:
    readEmail()
