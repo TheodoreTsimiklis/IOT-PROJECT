@@ -5,8 +5,8 @@ import webbrowser
 import os
 
 # account credentials
-username = "kiko625@outlook.com"
-password = "825Monster"
+username = ""
+password = ""
 # use your email provider's IMAP server, you can look for your provider's IMAP server on Google
 # or check this page: https://www.systoolsgroup.com/imap/
 # for office 365, it's this:
