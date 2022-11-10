@@ -3,6 +3,9 @@
 const char* ssid = "TP-Link_2AD8";
 const char* password = "14730078";
 const char* mqtt_server = "192.168.0.167";
+int value; 
+const int pResistor = A0;
+
 WiFiClient vanieriot;
 PubSubClient client(vanieriot);
 void setup_wifi() {
@@ -53,6 +56,7 @@ void setup() {
  setup_wifi();
  client.setServer(mqtt_server, 1883);
  client.setCallback(callback);
+ pinMode(pResistor, INPUT);
 }
 void loop() {
  if (!client.connected()) {
@@ -61,8 +65,12 @@ void loop() {
  if(!client.loop())
  client.connect("vanieriot");
 
+  value = analogRead(pResistor);
+ Serial.println("Light intensity is: ");
+Serial.println (value );
+String lgt =  String(value);  
 
- client.publish("IoTlab/ESP","Hello IoTlab");
+ client.publish("IoTlab/ESP",lgt.c_str());
 
  delay(5000);
  }
