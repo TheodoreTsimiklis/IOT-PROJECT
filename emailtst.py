@@ -1,8 +1,8 @@
 
 import smtplib
 
-email = "kiko625@outlook.com"
-password = "825Monster"
+email = ""
+password = ""
 
 with smtplib.SMTP('outlook.office365.com', 587) as smtp:
 	smtp.ehlo()
