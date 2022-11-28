@@ -11,6 +11,7 @@ import RPi.GPIO as GPIO
 from gpiozero import LED
 import dht11
 import sqlite3
+import bluetooth
 
 #for email
 email = ""
@@ -121,6 +122,17 @@ async def subscriber():
 
    pass
 
+async def refreshdata():
+       #DHT11 code (temperature and humidity)
+    result = instance.read()     
+   
+   #makes sure temperature and humidity aren't both 0 (dht just decides not to record temperature)
+    while(result.humidity == 0 and result.temperature == 0):
+       result = instance.read()
+    
+    values = {"tempval" : result.temperature, "humidval" : result.humidity}
+    
+    return jsonify(result=1,msg='Hello')
 
 
 #flask
@@ -144,19 +156,35 @@ def index():
             status = "on"
             img=f"https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
 
+   devices = bluetooth.discover_devices(lookup_names = True, lookup_class = True)
+
+   number_of_devices = len(devices)
+
    #DHT11 code (temperature and humidity)
    result = instance.read()     
    
    #makes sure temperature and humidity aren't both 0 (dht just decides not to record temperature)
-   #while(result.humidity == 0 and result.temperature == 0):
-       #result = instance.read()
+   while(result.humidity == 0 and result.temperature == 0):
+       result = instance.read()
     
     
 
        #returns these values when the page reloads
-   return render_template('index.html', value=status, imgval=img, tempval=result.temperature, humidval=result.humidity)
+   return render_template('index.html', value=status, imgval=img, tempval=result.temperature, humidval=result.humidity, numdev=number_of_devices)
 
+@app.route('/stream')
+def stream():
+    def generate():
+        result = instance.read()     
+   
+   #makes sure temperature and humidity aren't both 0 (dht just decides not to record temperature)
+        while(result.humidity == 0 and result.temperature == 0):
+        result = instance.read()
+        yield result
 
+    return app.response_class(generate(), mimetype='text/plain')
+
+app.run()
 
 if __name__ == '__main__':
    app.run(debug = True)
