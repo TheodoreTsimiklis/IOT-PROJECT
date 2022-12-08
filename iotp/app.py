@@ -1,9 +1,11 @@
-from dash import Dash, dcc, html, Input, Output
+from dash import Dash, dcc, html, Input, Output, DiskcacheManager, CeleryManager
 import RPi.GPIO as GPIO
 from gpiozero import LED
 import dht11
 import sqlite3
 from paho.mqtt import client as mqtt_client
+import paho.mqtt.client as mqttClient
+import time
 import bluetooth
 import imaplib
 import smtplib
@@ -38,6 +40,11 @@ app.layout = html.Div([
     html.Link(
         rel='stylesheet',
         href='/assets/typography.css'
+    ),
+    dcc.Interval(
+            id='interval-component',
+            interval=1 * 1000,
+            n_intervals=0
     ),
 
     html.Div(
@@ -117,7 +124,8 @@ app.layout = html.Div([
 
     html.Div(
             id="bloo"
-        )
+        ),
+    html.Img(id="plz")
 ])
 
 @app.callback(
@@ -126,49 +134,109 @@ app.layout = html.Div([
 )
 def update_LED(n_clicks):
     if(n_clicks % 2):
+        GPIO.output(LED, GPIO.LOW)
         return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
     else:
+        GPIO.output(LED, GPIO.HIGH)
         return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.clker.com%2Fcliparts%2FI%2Fs%2FH%2Fl%2Ft%2F7%2Foff-lightbulb-hi.png&f=1&nofb=1&ipt=2579432248a8ede6b5b48699a8521b2c91e9e870a3d6b344da5a60705f4d1d11&ipo=images"    
+        
+import diskcache
+cache = diskcache.Cache("./cache")
+background_callback_manager = DiskcacheManager(cache)
+    
+@app.callback(
+    Output('bloo', 'children'),
+    Input('interval-component', 'n_intervals'),
+    background=True,
+    manager=background_callback_manager,
+)
+def update_Blue(n_intervals):
+    devices = bluetooth.discover_devices(lookup_names = True, lookup_class = True)
+
+    number_of_devices = len(devices)
+    return f"{number_of_devices} bluetooth devices found {n_intervals}" 
+
 
 
 @app.callback(
     Output('tempg', 'value'),
-    Input('toggleBtn', 'n_clicks')
+    Input('interval-component', 'n_intervals')
 )
 def update_Temp(n_clicks):
     result = instance.read()     
    
     #makes sure temperature and humidity aren't both 0 (dht just decides not to record temperature)
-    while(result.humidity == 0 and result.temperature == 0):
+    while(result.temperature == 0):
         result = instance.read()
 
-    if(result.temperature > 20):
-        fanOn()
+    #if(result.temperature > 20):
+        #fanOn()
     return f"{result.temperature / 100}"
 
 @app.callback(
     Output('moistg', 'value'),
-    Input('toggleBtn', 'n_clicks')
+    Input('interval-component', 'n_intervals')
 )
 def update_Hum(n_clicks):
     result = instance.read()
-    return f"{result.humidity/ 100}"    
-
-@app.callback(
-    Output('bloo', 'children'),
-    Input('toggleBtn', 'n_clicks')
-)
-def update_Blue(n_clicks):
-    devices = bluetooth.discover_devices(lookup_names = True, lookup_class = True)
-
-    number_of_devices = len(devices)
-    return f"{number_of_devices} bluetooth found" 
+    
+    while(result.humidity == 0):
+        result = instance.read()
+        
+    result = instance.read()
+    return f"{result.humidity/ 100}"
 
 
-@app.callback(
-    Output('bloo', 'children'), # add timer
-    Input('toggleBtn', 'n_clicks')
-)
+#MQTT --------------------------------------------------------
+
+def on_connect(client, userdata, flags, rc):
+  
+    if rc == 0:
+  
+        print("Connected to broker")
+        client.on_message= on_message 
+  
+        global Connected                #Use global variable
+        Connected = True                #Signal connection 
+  
+    else:
+  
+        print("Connection failed")
+        
+def on_message(client, userdata, message):
+    output = message.payload.decode()
+    print(f"Message received: {output}")
+    if(message.topic == "IoTlab/ESP"): #photoresistor
+        if(int(output) > 400):
+            pass #send email
+    elif(message.topic == "/esp8266/data"): #rfid
+        pass #insert in db code
+  
+Connected = False   #global variable for the state of the connection
+  
+broker_address= "10.0.0.148"  #Broker address
+port = 1883                        #Broker port
+  
+client = mqttClient.Client("Python")               #create new instance
+client.on_connect= on_connect                      #attach function to callback
+client.on_message= on_message                      #attach function to callback
+  
+client.connect(broker_address, port=port)          #connect to broker
+  
+client.loop_start()        #start the loop
+  
+while Connected != True:    #Wait for connection
+    time.sleep(0.1)
+  
+client.subscribe("IoTlab/ESP")
+client.subscribe("/esp8266/data")
+client.subscribe("test")
+  
+
+
+# EMAILS------------------------------------------------------
+
+
 def readEmail(e):
    imap = imaplib.IMAP4_SSL(imap_server)
 # authenticate
@@ -232,6 +300,7 @@ def readEmail(e):
    # close the connection and logout
    imap.close()
    imap.logout()
+   return" "
 
 def lightsOn():
    with smtplib.SMTP('outlook.office365.com', 587) as smtp:
