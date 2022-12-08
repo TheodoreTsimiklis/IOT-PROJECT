@@ -18,12 +18,14 @@ import datetime
 app = Dash(__name__)
 
 #for email
-email = ""
-password = ""
+username = "IotDUmmy2022@outlook.com"
+password = "IotProject"
 today = datetime.datetime.now()
 
 temp = ""
 humid = ""
+tempSent = False
+times = 0
 
 #for physical parts (GPIO)
 GPIO.setwarnings(False)
@@ -146,6 +148,137 @@ app.layout = html.Div([
     html.Img(id="plz")
 ])
 
+
+        
+import diskcache
+cache = diskcache.Cache("./cache")
+background_callback_manager = DiskcacheManager(cache)
+
+# EMAILS------------------------------------------------------
+
+imap_server = "outlook.office365.com"
+
+def clean(text):
+    # clean text for creating a folder
+    return "".join(c if c.isalnum() else "_" for c in text)
+
+def readMail():
+    # create an IMAP4 class with SSL 
+    imap = imaplib.IMAP4_SSL(imap_server)
+    # authenticate
+    imap.login(username, password)
+
+    status, messages = imap.select("INBOX")
+    # number of top emails to fetch
+    N = 1
+    # total number of emails
+    messages = int(messages[0])    
+
+    for i in range(messages, messages-N, -1):
+        # fetch the email message by ID
+        res, msg = imap.fetch(str(i), "(RFC822)")
+        for response in msg:
+            if isinstance(response, tuple):
+                # parse a bytes email into a message object
+                msg = email.message_from_bytes(response[1])
+                # decode the email subject
+                subject, encoding = decode_header(msg["Subject"])[0]
+                if isinstance(subject, bytes):
+                    # if it's a bytes, decode to str
+                    subject = subject.decode(encoding)
+                # decode email sender
+                From, encoding = decode_header(msg.get("From"))[0]
+                if isinstance(From, bytes):
+                    From = From.decode(encoding)
+                # if the email message is multipart
+                if msg.is_multipart():
+                    # iterate over email parts
+                    for part in msg.walk():
+                        # extract content type of email
+                        content_type = part.get_content_type()
+                        content_disposition = str(part.get("Content-Disposition"))
+                        try:
+                            # get the email body
+                            body = part.get_payload(decode=True).decode()
+                        except:
+                            pass
+                        if content_type == "text/plain" and "attachment" not in content_disposition:
+                            # print text/plain emails and skip attachments
+                            print(body)
+                            if("yes" in body):
+                                print("balls2")
+                                GPIO.output(Motor1,GPIO.HIGH)
+                                GPIO.output(Motor2,GPIO.HIGH)
+                                GPIO.output(Motor3,GPIO.LOW)
+                            elif ("the temperature is over 20C" in body):
+                                tempSent = True     
+                else:
+                    # extract content type of email
+                    content_type = msg.get_content_type()
+                    # get the email body
+                    body = msg.get_payload(decode=True).decode()
+                    if content_type == "text/plain":
+                        # print only text email parts
+                        print(body)
+                        if("yes" in body):
+                            print("balls")
+                            GPIO.output(Motor1,GPIO.HIGH)
+                            GPIO.output(Motor2,GPIO.HIGH)
+                            GPIO.output(Motor3,GPIO.LOW)
+                        elif ("the temperature is over 20C" in body):
+                            tempSent = True
+    # close the connection and logout
+    imap.close()
+    imap.logout()
+# email actions ------------------------------
+@app.callback(
+    Output('fanstat', 'src'),
+    Input(' ', ' ')
+)
+def fananim():
+    return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmedia2.giphy.com%2Fmedia%2Fl4vtUphl0Ui9VywVGT%2Fsource.gif&f=1&nofb=1&ipt=4de825703b5e2fc381082a5387088a67c8edde82ae143c04ffdd0b63dd446497&ipo=images"
+  
+def fanOn():
+    conn = sqlite3.connect('../db/iotProj.db')
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO Users VALUES ('Raju', '7th', 'A')''')
+    conn.commit()
+    conn.close()
+    
+def lightsOn():
+   with smtplib.SMTP('outlook.office365.com', 587) as smtp:
+      smtp.ehlo()
+      smtp.starttls()
+      smtp.ehlo()
+
+      smtp.login(username, password)
+
+      subject = 'LEDs'
+      body = f'The LED was turned on on {today.date()} at {today.time()}'
+
+      msg = f'subject: {subject}\n\n{body}'
+
+      smtp.sendmail(username, username, msg)
+
+   GPIO.output(LED, GPIO.HIGH)    
+
+def fanMail():
+   with smtplib.SMTP('outlook.office365.com', 587) as smtp:
+      smtp.ehlo()
+      smtp.starttls()
+      smtp.ehlo()
+
+      smtp.login(username, password)
+
+      subject = 'Fans'
+      body = 'the temperature is over 20C \ndo you want to turn the fans on?'
+
+      msg = f'subject: {subject}\n\n{body}'
+
+      smtp.sendmail(username, username, msg)
+
+#update the page ----------------------------------------------
+
 @app.callback(
     Output('ledtoggle', 'src'),
     Input('toggleBtn', 'n_clicks')
@@ -157,11 +290,6 @@ def update_LED(n_clicks):
     else:
         GPIO.output(LED, GPIO.LOW)
         return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
-    
-        
-import diskcache
-cache = diskcache.Cache("./cache")
-background_callback_manager = DiskcacheManager(cache)
     
 @app.callback(
     Output('bloo', 'children'),
@@ -187,9 +315,12 @@ def update_Temp(n_clicks):
         result = instance.read()
         
     temp = result.temperature
-
-    #if(result.temperature > 20):
-        #fanOn()
+    
+    
+    
+    if(result.temperature > 20 and tempSent == False):
+        fanMail()
+    readMail()
     return f"{result.temperature / 100}"
 
 @app.callback(
@@ -242,8 +373,8 @@ def on_message(client, userdata, message):
     output = message.payload.decode()
     print(f"Message received: {output}")
     if(message.topic == "IoTlab/ESP"): #photoresistor
-        if(int(output) > 400):
-            pass #send email
+        if(int(output) >= 400):
+            lightsOn()  
     elif(message.topic == "/esp8266/data"): #rfid
         pass #insert in db code
         #if new to db add and sign in
@@ -268,106 +399,12 @@ while Connected != True:    #Wait for connection
 client.subscribe("IoTlab/ESP")
 client.subscribe("/esp8266/data")
 
-# email actions ------------------------------
-@app.callback(
-    Output('fanstat', 'src'),
-    Input(' ', ' ')
-)
-def fananim():
-    return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmedia2.giphy.com%2Fmedia%2Fl4vtUphl0Ui9VywVGT%2Fsource.gif&f=1&nofb=1&ipt=4de825703b5e2fc381082a5387088a67c8edde82ae143c04ffdd0b63dd446497&ipo=images"
-  
 
 
-# EMAILS------------------------------------------------------
 
-@app.callback(
-    Output('plz', 'children'),
-    Input('interval-component', 'n_intervals'),
-    background=True,
-    manager=background_callback_manager,
-)
-def readEmail(e):
-   imap = imaplib.IMAP4_SSL(imap_server)
-# authenticate
-   imap.login(username, password)
 
-   status, messages = imap.select("INBOX")
-   # number of top emails to fetch
-   N = 1
-   # total number of emails
-   messages = int(messages[0])    
-
-   for i in range(messages, messages-N, -1):
-       # fetch the email message by ID
-       res, msg = imap.fetch(str(i), "(RFC822)")
-       for response in msg:
-           if isinstance(response, tuple):
-               # parse a bytes email into a message object
-               msg = email.message_from_bytes(response[1])
-               # decode the email subject
-               subject, encoding = decode_header(msg["Subject"])[0]
-               if isinstance(subject, bytes):
-                   # if it's a bytes, decode to str
-                   subject = subject.decode(encoding)
-               # decode email sender
-               From, encoding = decode_header(msg.get("From"))[0]
-               if isinstance(From, bytes):
-                   From = From.decode(encoding)
-               # if the email message is multipart
-               if msg.is_multipart():
-                   # iterate over email parts
-                   for part in msg.walk():
-                       # extract content type of email
-                       content_type = part.get_content_type()
-                       content_disposition = str(part.get("Content-Disposition"))
-                       try:
-                           # get the email body
-                           body = part.get_payload(decode=True).decode()
-                       except:
-                           pass
-                       if content_type == "text/plain" and "attachment" not in content_disposition:
-                           # print text/plain emails and skip attachments
-                           print(body)
-                           if("yes" in body):
-                               print("balls2")
-                               GPIO.output(Motor1,GPIO.HIGH)
-                               GPIO.output(Motor2,GPIO.HIGH)
-                               GPIO.output(Motor3,GPIO.LOW) 
-               else:
-                   # extract content type of email
-                   content_type = msg.get_content_type()
-                   # get the email body
-                   body = msg.get_payload(decode=True).decode()
-                   if content_type == "text/plain":
-                       # print only text email parts
-                       print(body)
-                       if("yes" in body):
-                           print("balls")
-                           GPIO.output(Motor1,GPIO.HIGH)
-                           GPIO.output(Motor2,GPIO.HIGH)
-                           GPIO.output(Motor3,GPIO.LOW)
-                           fananim()
-   # close the connection and logout
-   imap.close()
-   imap.logout()
-   return" "
-
-def lightsOn():
-   with smtplib.SMTP('outlook.office365.com', 587) as smtp:
-      smtp.ehlo()
-      smtp.starttls()
-      smtp.ehlo()
-
-      smtp.login(email, password)
-
-      subject = 'LEDs'
-      body = f'The LED was turned on on {today.date()} at {today.time()}'
-
-      msg = f'subject: {subject}\n\n{body}'
-
-      smtp.sendmail(email, email, msg)
-
-   GPIO.output(LED, GPIO.HIGH) 
+   
+ 
 
 if __name__ == '__main__':
     app.run_server(debug=True)
