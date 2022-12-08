@@ -22,6 +22,9 @@ email = ""
 password = ""
 today = datetime.datetime.now()
 
+temp = ""
+humid = ""
+
 #for physical parts (GPIO)
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
@@ -81,7 +84,8 @@ app.layout = html.Div([
                     html.Br(),
                     html.Br(),
                     html.Br(),
-                    html.P("        num              |       num"),
+                    html.P(id='vals',
+                           children=["        num              |       num"]),
                     html.Div(
                         id="fans",
                         children=[
@@ -89,7 +93,7 @@ app.layout = html.Div([
                             className="pic",
                             id="fanpic",
                             children=[
-                                html.Img(src="https://static.thenounproject.com/png/1703696-200.png")
+                                html.Img(id="fanstat",src="https://static.thenounproject.com/png/1703696-200.png")
                             ]
                             )
                             
@@ -121,9 +125,23 @@ app.layout = html.Div([
                 )
         ])
     ),
-
     html.Div(
-            id="bloo"
+        id="bluetoothCon",
+        children=[
+            html.H1("Bluetooth"),
+            html.Div(
+        id="bloo",
+            children=[
+                html.Button(
+                    id="bluebutton",
+                    n_clicks=0,
+                    children=[
+                        html.Img(src="https://external-content.duckduckgo.com/iu/?u=http%3A%2F%2Fwww.inktechnologies.com%2Fblog%2Fwp-content%2Fuploads%2F2011%2F07%2FBluetooth-Logo-150x150.png&f=1&nofb=1&ipt=a338e8e9f8d220c6990f171c62915f52da073bf9be31e854fb42dd8bfb6ab88e&ipo=images")
+                        ]
+                )
+            ]
+        )           
+            ]
         ),
     html.Img(id="plz")
 ])
@@ -134,11 +152,12 @@ app.layout = html.Div([
 )
 def update_LED(n_clicks):
     if(n_clicks % 2):
-        GPIO.output(LED, GPIO.LOW)
-        return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
-    else:
         GPIO.output(LED, GPIO.HIGH)
         return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fwww.clker.com%2Fcliparts%2FI%2Fs%2FH%2Fl%2Ft%2F7%2Foff-lightbulb-hi.png&f=1&nofb=1&ipt=2579432248a8ede6b5b48699a8521b2c91e9e870a3d6b344da5a60705f4d1d11&ipo=images"    
+    else:
+        GPIO.output(LED, GPIO.LOW)
+        return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Ftoppng.com%2Fpublic%2Fuploads%2Fthumbnail%2Flight-bulb-on-off-png-11553940286qu70eim67f.png&f=1&nofb=1&ipt=facc53d8572229607dd5fa070712f89f3b1d1cf7fd178a7609773a621cdfb2b8&ipo=images"
+    
         
 import diskcache
 cache = diskcache.Cache("./cache")
@@ -146,15 +165,13 @@ background_callback_manager = DiskcacheManager(cache)
     
 @app.callback(
     Output('bloo', 'children'),
-    Input('interval-component', 'n_intervals'),
-    background=True,
-    manager=background_callback_manager,
+    Input('bluebutton', 'n_clicks'),
 )
-def update_Blue(n_intervals):
+def update_Blue(n_clicks):
     devices = bluetooth.discover_devices(lookup_names = True, lookup_class = True)
 
     number_of_devices = len(devices)
-    return f"{number_of_devices} bluetooth devices found {n_intervals}" 
+    return f"{number_of_devices} bluetooth devices found" 
 
 
 
@@ -168,6 +185,8 @@ def update_Temp(n_clicks):
     #makes sure temperature and humidity aren't both 0 (dht just decides not to record temperature)
     while(result.temperature == 0):
         result = instance.read()
+        
+    temp = result.temperature
 
     #if(result.temperature > 20):
         #fanOn()
@@ -182,9 +201,25 @@ def update_Hum(n_clicks):
     
     while(result.humidity == 0):
         result = instance.read()
+    
+    humid = result.humidity
         
     result = instance.read()
     return f"{result.humidity/ 100}"
+
+
+
+@app.callback(
+    Output('vals', 'children'),
+    Input('interval-component', 'n_intervals')
+)
+def updateVals(n_clicks):
+    result = instance.read()
+    
+    while(result.humidity == 0 and result.temperature == 0):
+        result = instance.read()
+    
+    return f"{result.temperature}°C     |      {result.humidity}%"
 
 
 #MQTT --------------------------------------------------------
@@ -211,10 +246,12 @@ def on_message(client, userdata, message):
             pass #send email
     elif(message.topic == "/esp8266/data"): #rfid
         pass #insert in db code
+        #if new to db add and sign in
+        #else sign in
   
 Connected = False   #global variable for the state of the connection
   
-broker_address= "10.0.0.148"  #Broker address
+broker_address= "192.168.0.148"  #Broker address
 port = 1883                        #Broker port
   
 client = mqttClient.Client("Python")               #create new instance
@@ -230,13 +267,25 @@ while Connected != True:    #Wait for connection
   
 client.subscribe("IoTlab/ESP")
 client.subscribe("/esp8266/data")
-client.subscribe("test")
+
+# email actions ------------------------------
+@app.callback(
+    Output('fanstat', 'src'),
+    Input(' ', ' ')
+)
+def fananim():
+    return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmedia2.giphy.com%2Fmedia%2Fl4vtUphl0Ui9VywVGT%2Fsource.gif&f=1&nofb=1&ipt=4de825703b5e2fc381082a5387088a67c8edde82ae143c04ffdd0b63dd446497&ipo=images"
   
 
 
 # EMAILS------------------------------------------------------
 
-
+@app.callback(
+    Output('plz', 'children'),
+    Input('interval-component', 'n_intervals'),
+    background=True,
+    manager=background_callback_manager,
+)
 def readEmail(e):
    imap = imaplib.IMAP4_SSL(imap_server)
 # authenticate
@@ -296,7 +345,8 @@ def readEmail(e):
                            print("balls")
                            GPIO.output(Motor1,GPIO.HIGH)
                            GPIO.output(Motor2,GPIO.HIGH)
-                           GPIO.output(Motor3,GPIO.LOW) 
+                           GPIO.output(Motor3,GPIO.LOW)
+                           fananim()
    # close the connection and logout
    imap.close()
    imap.logout()

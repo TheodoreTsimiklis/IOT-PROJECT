@@ -164,3 +164,17 @@ a{
       font-size: x-large;
     font-family: revert;
 }
+
+#bluetoothCon{
+    margin-top: 20px;
+    background-color: var(--gray);
+    border: 2px solid black;
+    width: 350px;
+    margin-left: 220px;   
+    border-radius: 10px;
+}
+
+#bloo{
+    background-color:white;
+
+}
