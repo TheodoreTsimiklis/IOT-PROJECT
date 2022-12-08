@@ -18,14 +18,14 @@ import datetime
 app = Dash(__name__)
 
 #for email
-username = "IotDUmmy2022@outlook.com"
-password = "IotProject"
+username = "SomeIoTGuy@outlook.com"
+password = "DummyPassword"
 today = datetime.datetime.now()
 
 temp = ""
 humid = ""
 tempSent = False
-times = 0
+uRFID = ""
 
 #for physical parts (GPIO)
 GPIO.setwarnings(False)
@@ -238,12 +238,36 @@ def readMail():
 def fananim():
     return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmedia2.giphy.com%2Fmedia%2Fl4vtUphl0Ui9VywVGT%2Fsource.gif&f=1&nofb=1&ipt=4de825703b5e2fc381082a5387088a67c8edde82ae143c04ffdd0b63dd446497&ipo=images"
   
-def fanOn():
+def saveDB(uname):
     conn = sqlite3.connect('../db/iotProj.db')
     cursor = conn.cursor()
-    cursor.execute('''INSERT INTO Users VALUES ('Raju', '7th', 'A')''')
+    cursor.execute('''INSERT INTO main (name ) VALUES (f'{uname}')''')
     conn.commit()
     conn.close()
+
+def getDB(rfidcode):
+    conn = sqlite3.connect('../db/iotProj.db')
+
+    cursor = conn.execute(f"SELECT * from main WHERE name = {rfidcode}") 
+    for row in cursor:
+       uid = row[0]
+       name = row[1]
+       Temp_tresh = row[2]
+       Hum_tresh = row[3]
+       Lgt_int_trsh = row[4]
+       pfp = row[5]
+       theme = row[6]
+       
+       userData()
+       
+    records = cursor.fetchall() 
+    rowCount = len(records) 
+    if rowCount == 0: 
+        saveDB(rfidcode)
+        
+        
+
+    conn.close() 
     
 def lightsOn():
    with smtplib.SMTP('outlook.office365.com', 587) as smtp:
@@ -376,13 +400,11 @@ def on_message(client, userdata, message):
         if(int(output) >= 400):
             lightsOn()  
     elif(message.topic == "/esp8266/data"): #rfid
-        pass #insert in db code
-        #if new to db add and sign in
-        #else sign in
+        getDB(output)
   
 Connected = False   #global variable for the state of the connection
   
-broker_address= "192.168.0.148"  #Broker address
+broker_address= "192.168.0.167"  #Broker address
 port = 1883                        #Broker port
   
 client = mqttClient.Client("Python")               #create new instance
