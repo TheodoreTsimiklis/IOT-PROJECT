@@ -154,6 +154,14 @@ import diskcache
 cache = diskcache.Cache("./cache")
 background_callback_manager = DiskcacheManager(cache)
 
+@app.callback(
+    Output('fanstat', 'src'),
+    Input(' ', ' ')
+)
+def fananim():
+    return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmedia2.giphy.com%2Fmedia%2Fl4vtUphl0Ui9VywVGT%2Fsource.gif&f=1&nofb=1&ipt=4de825703b5e2fc381082a5387088a67c8edde82ae143c04ffdd0b63dd446497&ipo=images"
+  
+
 # EMAILS------------------------------------------------------
 
 imap_server = "outlook.office365.com"
@@ -210,6 +218,7 @@ def readMail():
                                 GPIO.output(Motor1,GPIO.HIGH)
                                 GPIO.output(Motor2,GPIO.HIGH)
                                 GPIO.output(Motor3,GPIO.LOW)
+                                fananim()
                             elif ("the temperature is over 20C" in body):
                                 tempSent = True     
                 else:
@@ -225,19 +234,14 @@ def readMail():
                             GPIO.output(Motor1,GPIO.HIGH)
                             GPIO.output(Motor2,GPIO.HIGH)
                             GPIO.output(Motor3,GPIO.LOW)
+                            fananim()
                         elif ("the temperature is over 20C" in body):
                             tempSent = True
     # close the connection and logout
     imap.close()
     imap.logout()
 # email actions ------------------------------
-@app.callback(
-    Output('fanstat', 'src'),
-    Input(' ', ' ')
-)
-def fananim():
-    return "https://external-content.duckduckgo.com/iu/?u=https%3A%2F%2Fmedia2.giphy.com%2Fmedia%2Fl4vtUphl0Ui9VywVGT%2Fsource.gif&f=1&nofb=1&ipt=4de825703b5e2fc381082a5387088a67c8edde82ae143c04ffdd0b63dd446497&ipo=images"
-  
+
 def saveDB(uname):
     conn = sqlite3.connect('../db/iotProj.db')
     cursor = conn.cursor()
